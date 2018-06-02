@@ -23,9 +23,9 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 class NeuralNetMove(object):
-    FIRST_LAYER_SIZE = 1000
-    SECOND_LAYER_SIZE = 500
-    THIRD_LAYER_SIZE = 100
+    FIRST_LAYER_SIZE = 64
+    SECOND_LAYER_SIZE = 64
+    # THIRD_LAYER_SIZE = 100
 
     def __init__(self, cached_model=None, seed=None):
         self._graph = tf.Graph()
@@ -56,8 +56,8 @@ class NeuralNetMove(object):
             net = tf.contrib.layers.dropout(net, keep_prob=0.9)
 
             # Third layer
-            net = tf.contrib.layers.fully_connected(net, self.THIRD_LAYER_SIZE)
-            net = tf.contrib.layers.dropout(net, keep_prob=0.9)
+            # net = tf.contrib.layers.fully_connected(net, self.THIRD_LAYER_SIZE)
+            # net = tf.contrib.layers.dropout(net, keep_prob=0.9)
 
             # Final layer
             output = tf.contrib.layers.fully_connected(net, PER_MOVE_FEATURES)
@@ -69,7 +69,7 @@ class NeuralNetMove(object):
 
             self._loss = tf.losses.mean_squared_error(predictions=self._prediction, labels=self._target_move)
 
-            self._optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self._loss)
+            self._optimizer = tf.train.AdamOptimizer(learning_rate=1e-6).minimize(self._loss)
             self._saver = tf.train.Saver()
 
             if cached_model is None:

@@ -9,6 +9,8 @@ from tsmlstarterbot.parsing2 import parse
 
 from tsmlstarterbot.neural_net import NeuralNet
 from tsmlstarterbot.neural_net_move import NeuralNetMove
+from tsmlstarterbot.neural_net_alter import make_model
+from tsmlstarterbot.neural_net_action import make_net
 
 
 def fetch_data_dir(directory, limit):
@@ -76,8 +78,11 @@ def main():
     # Make deterministic if needed
     if args.seed is not None:
         np.random.seed(args.seed)
-    nn_action = NeuralNet(cached_model=args.cache, seed=args.seed)
-    nn_move = NeuralNetMove(cached_model=args.cache, seed=args.seed)
+    # nn_action = NeuralNet(cached_model=args.cache, seed=args.seed)
+    # nn_move = NeuralNetMove(cached_model=args.cache, seed=args.seed)
+
+    nn_move = make_model()
+    nn_action = make_net()
 
     if args.data.endswith('.zip'):
         raw_data = fetch_data_zip(args.data, args.games_limit)
@@ -103,7 +108,8 @@ def main():
 
     training_input_move, training_output_move = data_input_move[:int(0.85 * data_size_move)], data_output_move[:int(0.85 * data_size_move)]
     print("Training input action training_input_move[0]: {}".format(training_input_move[0]))
-    print("Training output action training_input_move[0]: {}".format(training_output_move[0]))
+    print("Training output action training_input_move[0]: {}".format(training_output_move[:20]))
+    print("Training output action training_input_action[0]: {}".format(training_output_action[:20]))
     validation_input_move, validation_output_move = data_input_move[int(0.85 * data_size_move):], data_output_move[int(0.85 * data_size_move):]
 
     training_data_size_move = len(training_input_move)
@@ -112,52 +118,77 @@ def main():
     permutation = np.random.permutation(training_data_size_move)
     training_input_move, training_output_move = training_input_move[permutation], training_output_move[permutation]
 
-    print("Initial, cross validation loss action: {}".format(nn_action.compute_loss(validation_input_action, validation_output_action)))
-    print("Initial, cross validation loss move: {}".format(nn_move.compute_loss(validation_input_move, validation_output_move)))
+    # print("Initial, cross validation loss action: {}".format(nn_action.compute_loss(validation_input_action, validation_output_action)))
+    # print("Initial, cross validation loss move: {}".format(nn_move.compute_loss(validation_input_move, validation_output_move)))
 
     curves_action = []
     curves_move = []
+    nn_move.fit(training_input_move, training_output_move, batch_size=32, epochs=args.steps)
+    print(nn_move.predict(training_input_move[0:10,]))
 
-    for s in range(args.steps):
-        start1 = (s * args.minibatch_size) % training_data_size_action
-        end1 = start1 + args.minibatch_size
-        training_loss_action = nn_action.fit(training_input_action[start1:end1], training_output_action[start1:end1])
-        if s % 25 == 0 or s == args.steps - 1:
-            validation_loss_action = nn_action.compute_loss(validation_input_action, validation_output_action)
-            print("Step: {}, action cross validation loss: {}, training_loss: {}".format(s, validation_loss_action, training_loss_action))
-            curves_action.append((s, training_loss_action, validation_loss_action))
+    # nn_action.fit(training_input_action, training_output_action, batch_size=32, epochs=args.steps)
+    # print(nn_action.predict(training_input_action[0:10,]))
 
-        start2 = (s * args.minibatch_size) % training_data_size_move
-        end2 = start2 + args.minibatch_size
-        training_loss_move = nn_move.fit(training_input_move[start2:end2], training_output_move[start2:end2])
-        if s % 25 == 0 or s == args.steps - 1:
-            validation_loss_move = nn_move.compute_loss(validation_input_move, validation_output_move)
-            print("Step: {}, move cross validation loss: {}, training_loss: {}".format(s, validation_loss_move, training_loss_move))
-            curves_move.append((s, training_loss_move, validation_loss_move))
 
-    cf1 = pd.DataFrame(curves_action, columns=['step', 'training_loss', 'cv_loss'])
-    fig1 = cf1.plot(x='step', y=['training_loss', 'cv_loss']).get_figure()
+    # for s in range(args.steps):
+        # start1 = (s * args.minibatch_size) % training_data_size_action
+        # end1 = start1 + args.minibatch_size
+        # training_loss_action = nn_action.fit(training_input_action[start1:end1], training_output_action[start1:end1])
+        # if s % 25 == 0 or s == args.steps - 1:
+        #     validation_loss_action = nn_action.compute_loss(validation_input_action, validation_output_action)
+        #     print("Step: {}, action cross validation loss: {}, training_loss: {}".format(s, validation_loss_action, training_loss_action))
+        #     curves_action.append((s, training_loss_action, validation_loss_action))
 
-    cf2 = pd.DataFrame(curves_move, columns=['step', 'training_loss', 'cv_loss'])
-    fig2 = cf2.plot(x='step', y=['training_loss', 'cv_loss']).get_figure()
+        # start2 = (s * args.minibatch_size) % training_data_size_move
+        # end2 = start2 + args.minibatch_size
+        # training_loss_move = nn_move.fit(training_input_move[start2:end2], training_output_move[start2:end2])
+        # if s % 25 == 0 or s == args.steps - 1:
+        #     validation_loss_move = nn_move.compute_loss(validation_input_move, validation_output_move)
+        #     print("Step: {}, move cross validation loss: {}, training_loss: {}".format(s, validation_loss_move, training_loss_move))
+        #     curves_move.append((s, training_loss_move, validation_loss_move))
 
-    # Save the trained model, so it can be used by the bot
+        # start1 = (s * args.minibatch_size) % training_data_size_move
+        # end1 = start1 + args.minibatch_size
+        # training_loss_move = nn_test.fit(training_input_move[start1:end1], training_output_move[start1:end1])
+        # if s % 25 == 0 or s == args.steps - 1:
+            #validation_loss_action = nn_test.compute_loss(validation_input_action, validation_output_action)
+            #print("Step: {}, action cross validation loss: {}, training_loss: {}".format(s, validation_loss_action, training_loss_action))
+            #curves_action.append((s, training_loss_action, validation_loss_action))
+
+
+    # cf1 = pd.DataFrame(curves_action, columns=['step', 'training_loss', 'cv_loss'])
+    # fig1 = cf1.plot(x='step', y=['training_loss', 'cv_loss']).get_figure()
+
+    # cf2 = pd.DataFrame(curves_move, columns=['step', 'training_loss', 'cv_loss'])
+    # fig2 = cf2.plot(x='step', y=['training_loss', 'cv_loss']).get_figure()
+
+    # # Save the trained model, so it can be used by the bot
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + ".ckpt")
-    print("Training finished, serializing action model to {}".format(model_path))
-    nn_action.save(model_path)
-    print("Model serialized - action")
+    # model_path = os.path.join(current_directory, os.path.pardir, "models", "action_model" + ".ckpt")
+    # print("Training finished, serializing action model to {}".format(model_path))
+    # nn_action.save(model_path)
+    # print("Model serialized - action")
 
     # Save the trained model, so it can be used by the bot
-    model_path_move = os.path.join(current_directory, os.path.pardir, "models", "move_model" + ".ckpt")
-    print("Training finished, serializing move model to {}".format(model_path))
+    model_path_move = os.path.join(current_directory, os.path.pardir, "models", "move_model_elu" + ".ckpt")
+    print("Training finished, serializing move model to {}".format(model_path_move))
     nn_move.save(model_path_move)
     print("Model serialized - move")
 
-    curve_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + "_training_plot.png")
-    curve_path_move = os.path.join(current_directory, os.path.pardir, "models", "move_model" + "_training_plot.png")
-    fig1.savefig(curve_path)
-    fig2.savefig(curve_path_move)
+    print("Training points {}, label: {}, sample prediction: {}".format(training_input_move[0],
+        training_output_move[0],
+        nn_move.predict(np.array(training_input_move[0])[None])[0]))
+
+    # print("Training points {}, label: {}, sample prediction: {}".format(training_input_action[0],
+    #     training_output_action[0],
+    #     nn_action.predict(np.array(training_input_action[0])[None])[0]))
+
+    # curve_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + "_training_plot.png")
+    # curve_path_move = os.path.join(current_directory, os.path.pardir, "models", "move_model" + "_training_plot.png")
+    # fig1.savefig(curve_path)
+    # fig2.savefig(curve_path_move)
+
+    # nn_move.save('move.out')
 
 if __name__ == "__main__":
     main()

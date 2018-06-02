@@ -23,9 +23,9 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 class NeuralNet(object):
-    FIRST_LAYER_SIZE = 1000
-    SECOND_LAYER_SIZE = 500
-    THIRD_LAYER_SIZE = 100
+    FIRST_LAYER_SIZE = 64
+    SECOND_LAYER_SIZE = 64
+    #THIRD_LAYER_SIZE = 100
 
     def __init__(self, cached_model=None, seed=None):
         self._graph = tf.Graph()
@@ -56,8 +56,8 @@ class NeuralNet(object):
             net = tf.contrib.layers.dropout(net, keep_prob=0.9)
 
             # Third layer
-            net = tf.contrib.layers.fully_connected(net, self.THIRD_LAYER_SIZE)
-            net = tf.contrib.layers.dropout(net, keep_prob=0.9)
+            # net = tf.contrib.layers.fully_connected(net, self.THIRD_LAYER_SIZE)
+            # net = tf.contrib.layers.dropout(net, keep_prob=0.9)
 
             # Final layer
             output = tf.contrib.layers.fully_connected(net, PER_SHIP_ACTIONS, activation_fn=None)

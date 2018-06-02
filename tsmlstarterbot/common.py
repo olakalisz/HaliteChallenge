@@ -58,8 +58,9 @@ SHIP_FEATURE_NAMES = [
 SHIP_ACTION_NAMES = [
     "move",
     "dock",
-    "noaction",
-    "undock"]
+    #"noaction",
+    #"undock"
+    ]
 
 SHIP_MOVE = [
     "angle",

@@ -306,15 +306,16 @@ def parse(all_games_json_data, bot_to_imitate=None, dump_features_location=None)
                     action = [
                         move,
                         dock,
-                        noaction,
-                        undock,
+                        #noaction,
+                        #undock,
                         ]
 
                     move_action = [
                         angle,
                         velocity
                     ]
-            game_training_data_action.append((state, action))        
+            if move == 1 or dock == 1:
+                game_training_data_action.append((state, action))        
             if move == 1:
                 game_training_data_move.append((state, move_action))
         training_data_action.append(game_training_data_action)

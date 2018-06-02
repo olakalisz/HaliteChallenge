@@ -3,29 +3,37 @@ import numpy as np
 import os
 import time
 import logging
+import sys
 
 import hlt
 from tsmlstarterbot.common import *
 from tsmlstarterbot.neural_net import NeuralNet
 from tsmlstarterbot.neural_net_move import NeuralNetMove
+from tsmlstarterbot.neural_net_alter import make_model
+stderr = sys.stderr
+sys.stderr = open(os.devnull, 'w')
+from keras.models import load_model
+sys.stderr = stderr
 
 
 class Bot:
     def __init__(self, location, name):
         current_directory = os.path.dirname(os.path.abspath(__file__))
         action_model_location = os.path.join(current_directory, os.path.pardir, "models", location)
-        move_model_location = os.path.join(current_directory, os.path.pardir, "models", "move_model.ckpt")
+        move_model_location = os.path.join(current_directory, os.path.pardir, "models", "move_model_elu.ckpt")
         self._name = name
-        self._neural_net = NeuralNet(cached_model=action_model_location)
-        self._neural_net_move = NeuralNetMove(cached_model=move_model_location)
+        #self._neural_net = NeuralNet(cached_model=action_model_location)
+        #self._neural_net_move = NeuralNetMove(cached_model=move_model_location)
+        self._neural_net_move = load_model(move_model_location)
+        # make_model.load()
 
         # Run prediction on random data to make sure that code path is executed at least once before the game starts
         random_input_data = np.random.rand(PER_SHIP_FEATURES)
-        predictions = self._neural_net.predict(random_input_data)
-        assert len(predictions) == PER_SHIP_ACTIONS
+        # predictions = self._neural_net.predict(random_input_data)
+        # assert len(predictions) == PER_SHIP_ACTIONS
 
-        predictions2 = self._neural_net_move.predict(random_input_data)
-        assert len(predictions2) == PER_MOVE_FEATURES
+        predictions2 = self._neural_net_move.predict(random_input_data[None])
+        assert len(predictions2[0]) == PER_MOVE_FEATURES
 
     def play(self):
         """
@@ -46,11 +54,7 @@ class Bot:
             # Find predictions which move should be applied to each ship
             predictions = {}
             for ship in features:
-                predictions[ship] = self._neural_net.predict(features[ship])
-            #print(predictions)
-
-            # # Use simple greedy algorithm to assign closest ships to each planet according to predictions.
-            # ships_to_planets_assignment = self.produce_ships_to_planets_assignment(game_map, predictions)
+                predictions[ship] = self._neural_net_move.predict(np.array(features[ship])[None])[0]
 
             # Produce halite instruction for each ship.
             instructions = self.produce_instructions(game_map, predictions, features)
@@ -263,60 +267,64 @@ class Bot:
         for ship in predictions:
             prediction = predictions[ship]
             logging.info(prediction)
-            # Define action based on prediction
-            move = prediction[0]
-            dock = prediction[1]
-            noaction = prediction[2]
-            undock = prediction[3]
-            # angle = prediction[1]
-            # velocity = prediction[2]
+            # # Define action based on prediction
+            # move = prediction[0]
+            # dock = prediction[1]
+            # noaction = prediction[2]
+            # undock = prediction[3]
+            angle = prediction[0]
+            velocity = prediction[1]
 
-            move_prediction = self._neural_net_move.predict(features[ship])
-            logging.info(move_prediction)
+            # move_prediction = self._neural_net_move.predict(features[ship])
+            # logging.info(move_prediction)
 
-            # Apply move action
-            if move > dock and move > undock:
-                move_prediction = self._neural_net_move.predict(features[ship])
-                angle = move_prediction[0]
-                velocity = move_prediction[1]
-                command_queue.append(ship.thrust(velocity, angle))
+            # # Apply move action
+            # if move > dock and move > undock:
+            #     move_prediction = self._neural_net_move.predict(features[ship])
+            #     angle = move_prediction[0]
+            #     velocity = move_prediction[1]
+            #     command_queue.append(ship.thrust(velocity, angle))
 
-            # Apply dock action
-            if dock > move and dock > undock:
-                position_x = ship.x
-                position_y = ship.y
-                # Find the closest planet
-                distance = 10000
-                planet_to_dock = None
-                for planet in game_map.all_planets():
-                    if distance > distance(planet.x, planet.y, position_x, position_y):
-                        distance = distance(planet.x, planet.y, position_x, position_y)
-                        planet_to_dock = planet
+            # # Apply dock action
+            # if dock > move and dock > undock:
+            #     position_x = ship.x
+            #     position_y = ship.y
+            #     # Find the closest planet
+            #     dist = 10000
+            #     planet_to_dock = None
+            #     for planet in game_map.all_planets():
+            #         if dist > distance(planet.x, planet.y, position_x, position_y):
+            #             dist = distance(planet.x, planet.y, position_x, position_y)
+            #             planet_to_dock = planet
 
-                command_queue.append(ship.dock(planet_to_dock))
+            #     command_queue.append(ship.dock(planet_to_dock))
 
-            # Apply undock action
-            if undock > move and undock > dock:
-                command_queue.append(ship.undock())
+            # # Apply undock action
+            # if undock > move and undock > dock:
+            #     command_queue.append(ship.undock())
 
             
-            # position_x = ship.x
-            # position_y = ship.y
+            position_x = ship.x
+            position_y = ship.y
 
-            # # Find the closest planet
-            # distance = 10000
-            # planet_to_dock = None
-            # for planet in game_map.all_planets():
-            #     if distance > distance(planet.x, planet.y, position_x, position_y):
-            #         distance = distance(planet.x, planet.y, position_x, position_y)
-            #         planet_to_dock = planet
-            # # Dock to the closest planet if possible
-            # if ship.can_dock(planet_to_dock):
-            #     command_queue.append(ship.dock(planet_to_dock))
-            # else:
-            #     # Move according to values learned from the network, if possible
-            #     if ship.docking_status == UNDOCKED:
-            #         command_queue.append(ship.thrust(velocity, angle))
+            # Find the closest planet
+            dist = 10000
+            planet_to_dock = None
+            for planet in game_map.all_planets():
+                if dist > distance(planet.x, planet.y, position_x, position_y):
+                    dist = distance(planet.x, planet.y, position_x, position_y)
+                    planet_to_dock = planet
+            # Dock to the closest planet if possible
+            if ship.can_dock(planet_to_dock) and not planet_to_dock.is_full():
+                command_queue.append(ship.dock(planet_to_dock))
+            else:
+                # Move according to values learned from the network, if possible
+                if ship.docking_status == ship.DockingStatus.UNDOCKED:
+                    if velocity < 0:
+                        velocity = 0
+                    if velocity > 7:
+                        velocity = 7
+                    command_queue.append(ship.thrust(velocity, angle))
 
 
         return command_queue
